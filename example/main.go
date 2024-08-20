@@ -9,6 +9,7 @@ import (
 
 	"github.com/CornMars2020/hdkey"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
 )
 
 var wif string = ""
@@ -35,19 +36,30 @@ func init() {
 func main() {
 	compress := true
 	count := 10
+	network := "mainnet"
 
 	if wif != "" {
+		var networkParams *chaincfg.Params
+		switch network {
+		case "test", "testnet", "testnet3":
+			networkParams = &chaincfg.TestNet3Params
+		case "regtest":
+			networkParams = &chaincfg.RegressionNetParams
+		default:
+			networkParams = &chaincfg.MainNetParams
+		}
+
 		wif, err := btcutil.DecodeWIF(wif)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		wifCompressed, addressCompressed, segwitBech32, segwitNested, taproot, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, true)
+		wifCompressed, addressCompressed, segwitBech32, segwitNested, taproot, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, true, networkParams)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		wifUncompressed, addressUncompressed, _, _, _, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, false)
+		wifUncompressed, addressUncompressed, _, _, _, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, false, networkParams)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,7 +78,7 @@ func main() {
 		return
 	}
 
-	km, err := hdkey.NewKeyManager(mnemonic, password)
+	km, err := hdkey.NewKeyManager(mnemonic, password, network)
 	if err != nil {
 		log.Fatal(err)
 	}

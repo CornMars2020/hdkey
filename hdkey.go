@@ -54,11 +54,12 @@ const (
 type Key struct {
 	Path     string
 	Bip32Key *bip32.Key
+	Network  *chaincfg.Params
 }
 
 func (k *Key) Calculate(compress bool) (wif, address, segwitBech32, segwitNested, taproot string, err error) {
 	prvKey, _ := btcec.PrivKeyFromBytes(k.Bip32Key.Key)
-	return CalculateFromPrivateKey(prvKey, compress)
+	return CalculateFromPrivateKey(prvKey, compress, k.Network)
 }
 
 // https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
@@ -69,12 +70,13 @@ type KeyManager struct {
 	Mnemonic   string
 	Passphrase string
 	Keys       map[string]*bip32.Key
+	Network    *chaincfg.Params
 	mux        sync.Mutex
 }
 
 // NewKeyManager return new key manager
 // if mnemonic is not provided, it will generate a new mnemonic with 128 bits of entropy, which is 12 words
-func NewKeyManager(mnemonic, passphrase string) (*KeyManager, error) {
+func NewKeyManager(mnemonic, passphrase, network string) (*KeyManager, error) {
 	if mnemonic == "" {
 		entropy, err := bip39.NewEntropy(128)
 		if err != nil {
@@ -91,7 +93,20 @@ func NewKeyManager(mnemonic, passphrase string) (*KeyManager, error) {
 		Passphrase: passphrase,
 		Keys:       make(map[string]*bip32.Key, 0),
 	}
+	km.SetNetwork(network)
+
 	return km, nil
+}
+
+func (km *KeyManager) SetNetwork(network string) {
+	switch network {
+	case "test", "testnet", "testnet3":
+		km.Network = &chaincfg.TestNet3Params
+	case "regtest":
+		km.Network = &chaincfg.RegressionNetParams
+	default:
+		km.Network = &chaincfg.MainNetParams
+	}
 }
 
 func (km *KeyManager) GetSeed() []byte {
@@ -232,7 +247,7 @@ func (km *KeyManager) GetKey(purpose, coinType, account, change, index uint32) (
 
 	key, ok := km.getKey(path)
 	if ok {
-		return &Key{Path: path, Bip32Key: key}, nil
+		return &Key{Path: path, Bip32Key: key, Network: km.Network}, nil
 	}
 
 	parent, err := km.GetChangeKey(purpose, coinType, account, change)
@@ -250,9 +265,9 @@ func (km *KeyManager) GetKey(purpose, coinType, account, change, index uint32) (
 	return &Key{Path: path, Bip32Key: key}, nil
 }
 
-func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool) (wif, address, segwitBech32, segwitNested, taproot string, err error) {
+func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkParams *chaincfg.Params) (wif, address, segwitBech32, segwitNested, taproot string, err error) {
 	// generate the wif(wallet import format) string
-	btcwif, err := btcutil.NewWIF(prvKey, &chaincfg.MainNetParams, compress)
+	btcwif, err := btcutil.NewWIF(prvKey, networkParams, compress)
 	if err != nil {
 		return "", "", "", "", "", err
 	}
@@ -260,7 +275,7 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool) (wif, addr
 
 	// generate a normal p2pkh address
 	serializedPubKey := btcwif.SerializePubKey()
-	addressPubKey, err := btcutil.NewAddressPubKey(serializedPubKey, &chaincfg.MainNetParams)
+	addressPubKey, err := btcutil.NewAddressPubKey(serializedPubKey, networkParams)
 	if err != nil {
 		return "", "", "", "", "", err
 	}
@@ -268,7 +283,7 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool) (wif, addr
 
 	// generate a normal p2wkh address from the pubkey hash
 	witnessProg := btcutil.Hash160(serializedPubKey)
-	addressWitnessPubKeyHash, err := btcutil.NewAddressWitnessPubKeyHash(witnessProg, &chaincfg.MainNetParams)
+	addressWitnessPubKeyHash, err := btcutil.NewAddressWitnessPubKeyHash(witnessProg, networkParams)
 	if err != nil {
 		return "", "", "", "", "", err
 	}
@@ -282,7 +297,7 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool) (wif, addr
 	if err != nil {
 		return "", "", "", "", "", err
 	}
-	addressScriptHash, err := btcutil.NewAddressScriptHash(serializedScript, &chaincfg.MainNetParams)
+	addressScriptHash, err := btcutil.NewAddressScriptHash(serializedScript, networkParams)
 	if err != nil {
 		return "", "", "", "", "", err
 	}
@@ -290,7 +305,7 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool) (wif, addr
 
 	// generate a taproot address
 	tapKey := txscript.ComputeTaprootKeyNoScript(prvKey.PubKey())
-	addressTaproot, err := btcutil.NewAddressTaproot(schnorr.SerializePubKey(tapKey), &chaincfg.MainNetParams)
+	addressTaproot, err := btcutil.NewAddressTaproot(schnorr.SerializePubKey(tapKey), networkParams)
 	if err != nil {
 		return "", "", "", "", "", err
 	}
