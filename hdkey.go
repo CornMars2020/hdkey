@@ -1,6 +1,7 @@
 package hdkey
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync"
@@ -57,7 +58,7 @@ type Key struct {
 	Network  *chaincfg.Params
 }
 
-func (k *Key) Calculate(compress bool) (wif, address, segwitBech32, segwitNested, taproot string, err error) {
+func (k *Key) Calculate(compress bool) (wif, serializedPubKeyHex, address, segwitBech32, segwitNested, taproot string, err error) {
 	prvKey, _ := btcec.PrivKeyFromBytes(k.Bip32Key.Key)
 	return CalculateFromPrivateKey(prvKey, compress, k.Network)
 }
@@ -102,6 +103,8 @@ func (km *KeyManager) SetNetwork(network string) {
 	switch network {
 	case "test", "testnet", "testnet3":
 		km.Network = &chaincfg.TestNet3Params
+	case "signet":
+		km.Network = &chaincfg.SimNetParams
 	case "regtest":
 		km.Network = &chaincfg.RegressionNetParams
 	default:
@@ -262,22 +265,26 @@ func (km *KeyManager) GetKey(purpose, coinType, account, change, index uint32) (
 
 	km.setKey(path, key)
 
-	return &Key{Path: path, Bip32Key: key}, nil
+	return &Key{Path: path, Bip32Key: key, Network: km.Network}, nil
 }
 
-func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkParams *chaincfg.Params) (wif, address, segwitBech32, segwitNested, taproot string, err error) {
+func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkParams *chaincfg.Params) (wif, serializedPubKeyHex, address, segwitBech32, segwitNested, taproot string, err error) {
 	// generate the wif(wallet import format) string
 	btcwif, err := btcutil.NewWIF(prvKey, networkParams, compress)
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 	wif = btcwif.String()
 
-	// generate a normal p2pkh address
 	serializedPubKey := btcwif.SerializePubKey()
+	serializedPubKeyHex = hex.EncodeToString(serializedPubKey)
+	// fmt.Printf("serializedPubKey: %v, %s\n", serializedPubKey, serializedPubKeyHex)
+
+	// generate a normal p2pkh address
+
 	addressPubKey, err := btcutil.NewAddressPubKey(serializedPubKey, networkParams)
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 	address = addressPubKey.EncodeAddress()
 
@@ -285,7 +292,7 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkPar
 	witnessProg := btcutil.Hash160(serializedPubKey)
 	addressWitnessPubKeyHash, err := btcutil.NewAddressWitnessPubKeyHash(witnessProg, networkParams)
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 	segwitBech32 = addressWitnessPubKeyHash.EncodeAddress()
 
@@ -295,11 +302,11 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkPar
 	// and malleability fixes.
 	serializedScript, err := txscript.PayToAddrScript(addressWitnessPubKeyHash)
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 	addressScriptHash, err := btcutil.NewAddressScriptHash(serializedScript, networkParams)
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 	segwitNested = addressScriptHash.EncodeAddress()
 
@@ -307,11 +314,11 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkPar
 	tapKey := txscript.ComputeTaprootKeyNoScript(prvKey.PubKey())
 	addressTaproot, err := btcutil.NewAddressTaproot(schnorr.SerializePubKey(tapKey), networkParams)
 	if err != nil {
-		return "", "", "", "", "", err
+		return "", "", "", "", "", "", err
 	}
 	taproot = addressTaproot.EncodeAddress()
 
-	return wif, address, segwitBech32, segwitNested, taproot, nil
+	return wif, serializedPubKeyHex, address, segwitBech32, segwitNested, taproot, nil
 }
 
 // ethereumAddress generates an ethereum address from a private key.

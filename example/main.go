@@ -51,22 +51,26 @@ func main() {
 
 		wif, err := btcutil.DecodeWIF(wif)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("DecodeWIF", err)
 		}
 
-		wifCompressed, addressCompressed, segwitBech32, segwitNested, taproot, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, true, networkParams)
+		wifCompressed, serializedPubKeyHexCompressed, addressCompressed, segwitBech32, segwitNested, taproot, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, true, networkParams)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Calculate", err)
 		}
 
-		wifUncompressed, addressUncompressed, _, _, _, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, false, networkParams)
+		wifUncompressed, serializedPubKeyHexUncompressed, addressUncompressed, _, _, _, err := hdkey.CalculateFromPrivateKey(wif.PrivKey, false, networkParams)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Calculate Uncompressed", err)
 		}
 
 		fmt.Println("\n Wallet Import Format:")
 		fmt.Printf(" *   %-24s %s\n", "WIF(compressed):", wifCompressed)
 		fmt.Printf(" *   %-24s %s\n", "WIF(uncompressed):", wifUncompressed)
+
+		fmt.Println("\n Public Key:")
+		fmt.Printf(" *   %-24s %s\n", "Compressed:", serializedPubKeyHexCompressed)
+		fmt.Printf(" *   %-24s %s\n", "Uncompressed:", serializedPubKeyHexUncompressed)
 
 		fmt.Println("\n Public Addresses:")
 		fmt.Printf(" *   %-24s %s\n", "Legacy(compresed):", addressCompressed)
@@ -80,11 +84,11 @@ func main() {
 
 	km, err := hdkey.NewKeyManager(mnemonic, password, network)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("NewKeyManager", err)
 	}
 	masterKey, err := km.GetMasterKey()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("GetMasterKey", err)
 	}
 	passphrase := km.Passphrase
 	if passphrase == "" {
@@ -95,64 +99,64 @@ func main() {
 	fmt.Printf("%-18s %x\n", "BIP39 Seed:", km.GetSeed())
 	fmt.Printf("%-18s %s\n", "BIP32 Root Key:", masterKey.B58Serialize())
 
-	fmt.Printf("\n%-18s %-34s %-52s\n", "Path(BIP44)", "Legacy(P2PKH, compresed)", "WIF(Wallet Import Format)")
-	fmt.Println(strings.Repeat("-", 106))
+	fmt.Printf("\n%-18s %-34s %-52s %-66s\n", "Path(BIP44)", "Legacy(P2PKH, compresed)", "WIF(Wallet Import Format)", "Public Key")
+	fmt.Println(strings.Repeat("-", 173))
 	for i := 0; i < count; i++ {
 		key, err := km.GetKey(hdkey.PurposeBIP44, hdkey.CoinTypeBTC, 0, 0, uint32(i))
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("GetKey Path(BIP44)", err)
 		}
-		wif, address, _, _, _, err := key.Calculate(compress)
+		wif, serializedPubKeyHex, address, _, _, _, err := key.Calculate(compress)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Calculate Path(BIP44)", err)
 		}
 
-		fmt.Printf("%-18s %-34s %s\n", key.Path, address, wif)
+		fmt.Printf("%-18s %-34s %-52s %-66s\n", key.Path, address, wif, serializedPubKeyHex)
 	}
 
-	fmt.Printf("\n%-18s %-34s %s\n", "Path(BIP49)", "SegWit(P2WPKH-nested-in-P2SH)", "WIF(Wallet Import Format)")
-	fmt.Println(strings.Repeat("-", 106))
+	fmt.Printf("\n%-18s %-34s %-52s %-66s\n", "Path(BIP49)", "SegWit(P2WPKH-nested-in-P2SH)", "WIF(Wallet Import Format)", "Public Key")
+	fmt.Println(strings.Repeat("-", 173))
 	for i := 0; i < count; i++ {
 		key, err := km.GetKey(hdkey.PurposeBIP49, hdkey.CoinTypeBTC, 0, 0, uint32(i))
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("GetKey Path(BIP49)", err)
 		}
-		wif, _, _, segwitNested, _, err := key.Calculate(compress)
+		wif, serializedPubKeyHex, _, _, segwitNested, _, err := key.Calculate(compress)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Calculate Path(BIP49)", err)
 		}
 
-		fmt.Printf("%-18s %s %s\n", key.Path, segwitNested, wif)
+		fmt.Printf("%-18s %-34s %-52s %-66s\n", key.Path, segwitNested, wif, serializedPubKeyHex)
 	}
 
-	fmt.Printf("\n%-18s %-42s %s\n", "Path(BIP84)", "SegWit(P2WPKH, bech32)", "WIF(Wallet Import Format)")
-	fmt.Println(strings.Repeat("-", 114))
+	fmt.Printf("\n%-18s %-42s %-52s %-66s\n", "Path(BIP84)", "SegWit(P2WPKH, bech32)", "WIF(Wallet Import Format)", "Public Key")
+	fmt.Println(strings.Repeat("-", 181))
 	for i := 0; i < count; i++ {
 		key, err := km.GetKey(hdkey.PurposeBIP84, hdkey.CoinTypeBTC, 0, 0, uint32(i))
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("GetKey Path(BIP84)", err)
 		}
-		wif, _, segwitBech32, _, _, err := key.Calculate(compress)
+		wif, serializedPubKeyHex, _, segwitBech32, _, _, err := key.Calculate(compress)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Calculate Path(BIP84)", err)
 		}
 
-		fmt.Printf("%-18s %s %s\n", key.Path, segwitBech32, wif)
+		fmt.Printf("%-18s %-42s %-52s %-66s\n", key.Path, segwitBech32, wif, serializedPubKeyHex)
 	}
 
-	fmt.Printf("\n%-18s %-62s %s\n", "Path(BIP86)", "Taproot(P2TR, bech32m)", "WIF(Wallet Import Format)")
-	fmt.Println(strings.Repeat("-", 134))
+	fmt.Printf("\n%-18s %-62s %-52s %-66s\n", "Path(BIP86)", "Taproot(P2TR, bech32m)", "WIF(Wallet Import Format)", "Public Key")
+	fmt.Println(strings.Repeat("-", 201))
 	for i := 0; i < count; i++ {
 		key, err := km.GetKey(hdkey.PurposeBIP86, hdkey.CoinTypeBTC, 0, 0, uint32(i))
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("GetKey Path(BIP86)", err)
 		}
-		wif, _, _, _, taproot, err := key.Calculate(compress)
+		wif, serializedPubKeyHex, _, _, _, taproot, err := key.Calculate(compress)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Calculate Path(BIP86)", err)
 		}
 
-		fmt.Printf("%-18s %s %s\n", key.Path, taproot, wif)
+		fmt.Printf("%-18s %-62s %-52s %-66s\n", key.Path, taproot, wif, serializedPubKeyHex)
 	}
 
 	fmt.Printf("\n%-18s %-42s %-52s\n", "Path(BIP44)", "Ethereum(EIP55)", "Private Key(hex)")
@@ -160,7 +164,7 @@ func main() {
 	for i := 0; i < count; i++ {
 		key, err := km.GetKey(hdkey.PurposeBIP44, hdkey.CoinTypeETH, 0, 0, uint32(i))
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("GetKey Path(BIP44)", err)
 		}
 
 		address := hdkey.EthereumAddress(key.Bip32Key.Key)
