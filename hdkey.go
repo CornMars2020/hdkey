@@ -268,6 +268,22 @@ func (km *KeyManager) GetKey(purpose, coinType, account, change, index uint32) (
 	return &Key{Path: path, Bip32Key: key, Network: km.Network}, nil
 }
 
+func (km *KeyManager) GetBTCLegacyKey(index uint32) (*Key, error) {
+	return km.GetKey(PurposeBIP44, CoinTypeBTC, 0, 0, index)
+}
+
+func (km *KeyManager) GetBTCNestedSegWitKey(index uint32) (*Key, error) {
+	return km.GetKey(PurposeBIP49, CoinTypeBTC, 0, 0, uint32(index))
+}
+
+func (km *KeyManager) GetBTCNativeSegWitKey(index uint32) (*Key, error) {
+	return km.GetKey(PurposeBIP84, CoinTypeBTC, 0, 0, uint32(index))
+}
+
+func (km *KeyManager) GetBTCTaprootKey(index uint32) (*Key, error) {
+	return km.GetKey(PurposeBIP86, CoinTypeBTC, 0, 0, uint32(index))
+}
+
 func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkParams *chaincfg.Params) (wif, serializedPubKeyHex, address, segwitBech32, segwitNested, taproot string, err error) {
 	// generate the wif(wallet import format) string
 	btcwif, err := btcutil.NewWIF(prvKey, networkParams, compress)

@@ -102,7 +102,7 @@ func main() {
 	fmt.Printf("\n%-18s %-34s %-52s %-66s\n", "Path(BIP44)", "Legacy(P2PKH, compresed)", "WIF(Wallet Import Format)", "Public Key")
 	fmt.Println(strings.Repeat("-", 173))
 	for i := 0; i < count; i++ {
-		key, err := km.GetKey(hdkey.PurposeBIP44, hdkey.CoinTypeBTC, 0, 0, uint32(i))
+		key, err := km.GetBTCLegacyKey(uint32(i))
 		if err != nil {
 			log.Fatal("GetKey Path(BIP44)", err)
 		}
@@ -114,10 +114,10 @@ func main() {
 		fmt.Printf("%-18s %-34s %-52s %-66s\n", key.Path, address, wif, serializedPubKeyHex)
 	}
 
-	fmt.Printf("\n%-18s %-34s %-52s %-66s\n", "Path(BIP49)", "SegWit(P2WPKH-nested-in-P2SH)", "WIF(Wallet Import Format)", "Public Key")
+	fmt.Printf("\n%-18s %-34s %-52s %-66s\n", "Path(BIP49)", "Nested SegWit(P2WPKH-nested-in-P2SH)", "WIF(Wallet Import Format)", "Public Key")
 	fmt.Println(strings.Repeat("-", 173))
 	for i := 0; i < count; i++ {
-		key, err := km.GetKey(hdkey.PurposeBIP49, hdkey.CoinTypeBTC, 0, 0, uint32(i))
+		key, err := km.GetBTCNestedSegWitKey(uint32(i))
 		if err != nil {
 			log.Fatal("GetKey Path(BIP49)", err)
 		}
@@ -129,10 +129,10 @@ func main() {
 		fmt.Printf("%-18s %-34s %-52s %-66s\n", key.Path, segwitNested, wif, serializedPubKeyHex)
 	}
 
-	fmt.Printf("\n%-18s %-42s %-52s %-66s\n", "Path(BIP84)", "SegWit(P2WPKH, bech32)", "WIF(Wallet Import Format)", "Public Key")
+	fmt.Printf("\n%-18s %-42s %-52s %-66s\n", "Path(BIP84)", "Native SegWit(P2WPKH, bech32)", "WIF(Wallet Import Format)", "Public Key")
 	fmt.Println(strings.Repeat("-", 181))
 	for i := 0; i < count; i++ {
-		key, err := km.GetKey(hdkey.PurposeBIP84, hdkey.CoinTypeBTC, 0, 0, uint32(i))
+		key, err := km.GetBTCNativeSegWitKey(uint32(i))
 		if err != nil {
 			log.Fatal("GetKey Path(BIP84)", err)
 		}
@@ -147,7 +147,7 @@ func main() {
 	fmt.Printf("\n%-18s %-62s %-52s %-66s\n", "Path(BIP86)", "Taproot(P2TR, bech32m)", "WIF(Wallet Import Format)", "Public Key")
 	fmt.Println(strings.Repeat("-", 201))
 	for i := 0; i < count; i++ {
-		key, err := km.GetKey(hdkey.PurposeBIP86, hdkey.CoinTypeBTC, 0, 0, uint32(i))
+		key, err := km.GetBTCTaprootKey(uint32(i))
 		if err != nil {
 			log.Fatal("GetKey Path(BIP86)", err)
 		}
