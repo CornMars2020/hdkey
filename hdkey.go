@@ -337,6 +337,14 @@ func CalculateFromPrivateKey(prvKey *btcec.PrivateKey, compress bool, networkPar
 	return wif, serializedPubKeyHex, address, segwitBech32, segwitNested, taproot, nil
 }
 
+func CalculateFromWif(wifPrivKey string, compress bool, networkParams *chaincfg.Params) (wif, serializedPubKeyHex, address, segwitBech32, segwitNested, taproot string, err error) {
+	btcwif, err := btcutil.DecodeWIF(wifPrivKey)
+	if err != nil {
+		return "", "", "", "", "", "", err
+	}
+	return CalculateFromPrivateKey(btcwif.PrivKey, compress, networkParams)
+}
+
 // ethereumAddress generates an ethereum address from a private key.
 // The private key must be 32 bytes. The address is returned with the 0x prefix and in EIP55 checksum format.
 func EthereumAddress(privateKeyBytes []byte) (address string) {
